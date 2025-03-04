@@ -1,0 +1,85 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(auto()) @map("_id") @db.ObjectId
+  name         String?
+  email        String        @unique
+  passwordHash String
+  role         String        @default("member")
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  deletedAt    DateTime?
+  teamMembers  TeamMember[]
+  invitations  Invitation[]  @relation("InvitedBy")
+  activityLogs ActivityLog[]
+}
+
+model Team {
+  id                   String         @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  stripeCustomerId     String?        @unique
+  stripeSubscriptionId String?        @unique
+  stripeProductId      String?
+  planName            String?
+  subscriptionStatus   String?
+  teamMembers         TeamMember[]
+  activityLogs        ActivityLog[]
+  invitations         Invitation[]
+}
+
+model TeamMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  teamId    String   @db.ObjectId
+  role      String
+  joinedAt  DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id])
+}
+
+model ActivityLog {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  teamId    String    @db.ObjectId
+  userId    String?   @db.ObjectId
+  action    String
+  timestamp DateTime  @default(now())
+  ipAddress String?
+  team      Team      @relation(fields: [teamId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
+}
+
+model Invitation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamId    String   @db.ObjectId
+  email     String
+  role      String
+  invitedBy String   @db.ObjectId
+  invitedAt DateTime @default(now())
+  status    String   @default("pending")
+  team      Team     @relation(fields: [teamId], references: [id])
+  inviter   User     @relation("InvitedBy", fields: [invitedBy], references: [id])
+}
+
+enum ActivityType {
+  SIGN_UP
+  SIGN_IN
+  SIGN_OUT
+  UPDATE_PASSWORD
+  DELETE_ACCOUNT
+  UPDATE_ACCOUNT
+  CREATE_TEAM
+  REMOVE_TEAM_MEMBER
+  INVITE_TEAM_MEMBER
+  ACCEPT_INVITATION
+}
